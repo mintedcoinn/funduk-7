@@ -1,7 +1,5 @@
 ﻿#include <iostream>
 #include <fstream>
-#include <vector>
-#include <queue>
 #include <climits>
 #include <iomanip>
 using namespace std;
@@ -9,10 +7,25 @@ using namespace std;
 class Graph {
 private:
     int numVertices;
-    vector<vector<int>> adjMatrix;
+    int** adjMatrix;
 
 public:
-    Graph(int vertices) : numVertices(vertices), adjMatrix(vertices, vector<int>(vertices, 0)) {}
+    Graph(int vertices) : numVertices(vertices) {
+        adjMatrix = new int* [numVertices];
+        for (int i = 0; i < numVertices; ++i) {
+            adjMatrix[i] = new int[numVertices];
+            for (int j = 0; j < numVertices; ++j) {
+                adjMatrix[i][j] = 0;
+            }
+        }
+    }
+
+    ~Graph() {
+        for (int i = 0; i < numVertices; ++i) {
+            delete[] adjMatrix[i];
+        }
+        delete[] adjMatrix;
+    }
 
     void newEdge(int from, int to, int weight) {
         if (from >= 0 && from < numVertices && to >= 0 && to < numVertices) {
@@ -30,54 +43,71 @@ public:
         }
     }
 
-    vector<int> BFS(int startVertex) {
-        vector<bool> visited(numVertices, false);
-        queue<int> q;
-        vector<int> traversalOrder;
+    int* BFS(int startVertex, int& outSize) {
+        bool* visited = new bool[numVertices];
+        for (int i = 0; i < numVertices; ++i) visited[i] = false;
 
-        q.push(startVertex);
+        int* queue = new int[numVertices];
+        int front = 0, rear = 0;
+
+        int* traversalOrder = new int[numVertices];
+        int count = 0;
+
+        queue[rear++] = startVertex;
         visited[startVertex] = true;
 
-        while (!q.empty()) {
-            int current = q.front();
-            q.pop();
-            traversalOrder.push_back(current);
+        while (front < rear) {
+            int current = queue[front++];
+            traversalOrder[count++] = current;
 
             for (int neighbor = 0; neighbor < numVertices; ++neighbor) {
                 if (adjMatrix[current][neighbor] > 0 && !visited[neighbor]) {
                     visited[neighbor] = true;
-                    q.push(neighbor);
+                    queue[rear++] = neighbor;
                 }
             }
         }
 
+        delete[] visited;
+        delete[] queue;
+        outSize = count;
         return traversalOrder;
     }
 
-    vector<int> DeykstraAlg(int startVertex) {
-        vector<int> distances(numVertices, INT_MAX);
-        vector<bool> visited(numVertices, false);
-        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+    int* DeykstraAlg(int startVertex, int& outSize) {
+        int* distances = new int[numVertices];
+        bool* visited = new bool[numVertices];
+
+        for (int i = 0; i < numVertices; ++i) {
+            distances[i] = INT_MAX;
+            visited[i] = false;
+        }
 
         distances[startVertex] = 0;
-        pq.push({ 0, startVertex });
 
-        while (!pq.empty()) {
-            int current = pq.top().second;
-            pq.pop();
+        for (int i = 0; i < numVertices; ++i) {
+            int u = -1;
+            int minDist = INT_MAX;
+            for (int j = 0; j < numVertices; ++j) {
+                if (!visited[j] && distances[j] < minDist) {
+                    minDist = distances[j];
+                    u = j;
+                }
+            }
 
-            if (visited[current]) continue;
-            visited[current] = true;
+            if (u == -1) break;
+            visited[u] = true;
 
-            for (int neighbor = 0; neighbor < numVertices; ++neighbor) {
-                int weight = adjMatrix[current][neighbor];
-                if (weight > 0 && distances[current] + weight < distances[neighbor]) {
-                    distances[neighbor] = distances[current] + weight;
-                    pq.push({ distances[neighbor], neighbor });
+            for (int v = 0; v < numVertices; ++v) {
+                int weight = adjMatrix[u][v];
+                if (weight > 0 && distances[u] != INT_MAX && distances[u] + weight < distances[v]) {
+                    distances[v] = distances[u] + weight;
                 }
             }
         }
 
+        delete[] visited;
+        outSize = numVertices;
         return distances;
     }
 
@@ -123,16 +153,19 @@ int main() {
     cout << "\nEnter start vertex (0-" << graph.getNumVertices() - 1 << "): ";
     cin >> startVertex;
 
-    vector<int> bfsOrder = graph.BFS(startVertex);
+    int bfsSize = 0;
+    int* bfsOrder = graph.BFS(startVertex, bfsSize);
     cout << "BFS traversal order: ";
-    for (int v : bfsOrder) {
-        cout << v << " ";
+    for (int i = 0; i < bfsSize; ++i) {
+        cout << bfsOrder[i] << " ";
     }
     cout << "\n";
+    delete[] bfsOrder;
 
-    vector<int> shortestDistances = graph.DeykstraAlg(startVertex);
+    int distSize = 0;
+    int* shortestDistances = graph.DeykstraAlg(startVertex, distSize);
     cout << "Shortest distances from vertex " << startVertex << ":\n";
-    for (int i = 0; i < shortestDistances.size(); ++i) {
+    for (int i = 0; i < distSize; ++i) {
         if (shortestDistances[i] == INT_MAX) {
             cout << "Vertex " << i << ": INF\n";
         }
@@ -140,6 +173,7 @@ int main() {
             cout << "Vertex " << i << ": " << shortestDistances[i] << "\n";
         }
     }
+    delete[] shortestDistances;
 
     return 0;
 }
