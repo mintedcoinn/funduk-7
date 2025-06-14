@@ -34,7 +34,7 @@
 
 *.sln
 *.vcxproj
-
+*.vcxproj.*
 *.pdb
 
 .vs/
